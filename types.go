@@ -19,6 +19,7 @@ const (
 	BCHEUR   = "BCHEUR"
 	BCHUSD   = "BCHUSD"
 	BCHXBT   = "BCHXBT"
+	DAIEUR   = "DAIEUR"
 	DASHEUR  = "DASHEUR"
 	DASHUSD  = "DASHUSD"
 	DASHXBT  = "DASHXBT"
@@ -116,6 +117,7 @@ type AssetPairsResponse struct {
 	BCHEUR   AssetPairInfo
 	BCHUSD   AssetPairInfo
 	BCHXBT   AssetPairInfo
+	DAIEUR   AssetPairInfo
 	DASHEUR  AssetPairInfo
 	DASHUSD  AssetPairInfo
 	DASHXBT  AssetPairInfo
@@ -320,6 +322,7 @@ type Fees struct {
 	BCHEUR   FeeInfo
 	BCHUSD   FeeInfo
 	BCHXBT   FeeInfo
+	DAIEUR   FeeInfo
 	DASHEUR  FeeInfo
 	DASHUSD  FeeInfo
 	DASHXBT  FeeInfo
@@ -413,6 +416,7 @@ type TickerResponse struct {
 	BCHEUR   PairTickerInfo
 	BCHUSD   PairTickerInfo
 	BCHXBT   PairTickerInfo
+	DAIEUR   PairTickerInfo
 	DASHEUR  PairTickerInfo
 	DASHUSD  PairTickerInfo
 	DASHXBT  PairTickerInfo
