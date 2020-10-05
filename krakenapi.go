@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/big"
 	"mime"
@@ -15,7 +16,12 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/lightningnetwork/lnd/build"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 )
 
 const (
@@ -26,6 +32,12 @@ const (
 	// APIUserAgent identifies this library with the Kraken API
 	APIUserAgent = "Kraken GO API Agent (https://github.com/beldur/kraken-go-api-client)"
 )
+
+var log = build.NewSubLogger("KAPI", nil)
+
+func SetLogger(w *build.RotatingLogWriter) {
+	log = build.NewSubLogger("KAPI", w.GenSubLogger)
+}
 
 // List of valid public methods
 var publicMethods = []string{
@@ -99,21 +111,63 @@ type KrakenAPI struct {
 	key    string
 	secret string
 	client *http.Client
+
+	includeStats bool
+	statNum      int
+	readStats    map[string]int
+	statsMtx     sync.Mutex
+}
+
+const respPerPrint = 1000
+
+func (m *KrakenAPI) readResp(uri string, body io.Reader) ([]byte, error) {
+	data, err := ioutil.ReadAll(body)
+	if err != nil {
+		return nil, err
+	}
+
+	if !m.includeStats {
+		return data, nil
+	}
+
+	m.statsMtx.Lock()
+	m.statNum++
+	m.readStats[uri] += len(data)
+	if m.statNum%respPerPrint == 0 {
+		var total float64
+		for _, v := range m.readStats {
+			total += float64(v)
+		}
+
+		printer := message.NewPrinter(language.English)
+		s := ""
+		for k, v := range m.readStats {
+			pr := float64(v) * 100 / total
+			s += printer.Sprintf("%s:\t%d bytes\t%.2f prc\n", k, v, pr)
+		}
+
+		log.Infof("Kraken resp stats:\n%s\n", s)
+	}
+	m.statsMtx.Unlock()
+
+	return data, nil
 }
 
 // New creates a new Kraken API client
-func New(key, secret string) *KrakenAPI {
+func New(key, secret string, stats bool) *KrakenAPI {
 	krakenAPI := KrakenAPI{
-		key:    key,
-		secret: secret,
-		client: http.DefaultClient,
+		key:          key,
+		secret:       secret,
+		client:       http.DefaultClient,
+		includeStats: stats,
+		readStats:    make(map[string]int),
 	}
 	return &krakenAPI
 }
 
 // NewWithClient creates a new Kraken API client with custom http client
-func NewWithClient(key, secret string, httpClient *http.Client) *KrakenAPI {
-	kraken := New(key, secret)
+func NewWithClient(key, secret string, httpClient *http.Client, stats bool) *KrakenAPI {
+	kraken := New(key, secret, stats)
 	return kraken.WithClient(httpClient)
 }
 
@@ -608,7 +662,7 @@ func (api *KrakenAPI) doRequest(reqURL string, values url.Values, headers map[st
 	defer resp.Body.Close()
 
 	// Read request
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := api.readResp("POST "+reqURL, resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("Could not execute request! #3 (%s)", err.Error())
 	}
