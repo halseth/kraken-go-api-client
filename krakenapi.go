@@ -670,10 +670,13 @@ func (api *KrakenAPI) doRequest(reqURL string, values url.Values, headers map[st
 	// Check mime type of response
 	mimeType, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
 	if err != nil {
-		return nil, fmt.Errorf("Could not execute request #4! (%s)", err.Error())
+		return nil, fmt.Errorf("Could not execute request #4! (%s) data=[%s]",
+			err.Error(), string(body))
 	}
 	if mimeType != "application/json" {
-		return nil, fmt.Errorf("Could not execute request #5! (%s)", fmt.Sprintf("Response Content-Type is '%s', but should be 'application/json'.", mimeType))
+		return nil, fmt.Errorf("Could not execute request #5! (%s) data=[%s]",
+			fmt.Sprintf("Response Content-Type is '%s', but should be 'application/json'.", mimeType),
+			string(body))
 	}
 
 	// Parse request
@@ -687,12 +690,14 @@ func (api *KrakenAPI) doRequest(reqURL string, values url.Values, headers map[st
 
 	err = json.Unmarshal(body, &jsonData)
 	if err != nil {
-		return nil, fmt.Errorf("Could not execute request! #6 (%s)", err.Error())
+		return nil, fmt.Errorf("Could not execute request! #6 (%s) data=[%s]",
+			err.Error(), string(body))
 	}
 
 	// Check for Kraken API error
 	if len(jsonData.Error) > 0 {
-		return nil, fmt.Errorf("Could not execute request! #7 (%s)", jsonData.Error)
+		return nil, fmt.Errorf("Could not execute request! #7 (%s) data=[%s]",
+			jsonData.Error, string(body))
 	}
 
 	return jsonData.Result, nil
